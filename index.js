@@ -13,7 +13,7 @@ function createBot() {
   const bot = mineflayer.createBot({
     host: 'BeastSMP-java.aternos.me',
     port: 17030,
-    username: 'bot_',
+    username: 'Binod_op',
     version: '1.12'
   });
 
