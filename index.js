@@ -14,7 +14,7 @@ function createBot() {
     host: 'BeastSMP-java.aternos.me',
     port: 17030,
     username: 'bot_',
-    version: false // or '1.12'
+    version: '1.12'
   });
 
   bot.once('spawn', () => {
