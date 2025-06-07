@@ -8,8 +8,8 @@ app.listen(3000, () => console.log('Web server running on port 3000'));
 
 function createBot() {
   const bot = mineflayer.createBot({
-    host: 'BeastSMP-java.aternos.me',
-    port: 17030,
+    host: 'Yeahdidy_boi.aternos.me',
+    port: 19186,
     username: 'Binod_op',
     version: '1.12', // Aternos is 1.12 as you mentioned
     auth: 'offline' // Important if server is cracked (non-premium)
