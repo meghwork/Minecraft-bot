@@ -53,4 +53,26 @@ function createBot() {
     auth: 'offline'
   });
 
-  bot.once('spawn',
+  bot.once('spawn', () => {
+    console.log(`✅ Bot '${username}' joined the server.`);
+    setTimeout(() => {
+      startRandomActions(bot);
+    }, 5000);
+  });
+
+  bot.on('end', () => {
+    console.log(`🔁 Bot '${username}' disconnected. Reconnecting in 10 seconds...`);
+    setTimeout(createBot, 10000);
+  });
+
+  bot.on('kicked', reason => {
+    console.log(`⛔ Bot '${username}' was kicked:`, reason);
+  });
+
+  bot.on('error', err => {
+    console.log(`❌ Bot '${username}' error:`, err.message);
+  });
+}
+
+// Start the bot
+createBot();
