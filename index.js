@@ -2,23 +2,24 @@ const mineflayer = require('mineflayer');
 const express = require('express');
 const app = express();
 
-let bot = null; // Global bot reference
+let bot = null;
+let isConnecting = false; // Prevent double spawn
 
-// 🌐 Web server to keep alive (for Render)
+// 🌐 Keep-alive web server
 app.get('/', (req, res) => res.send('AFK bot is alive!'));
 app.listen(3000, () => console.log('🌐 Web server running on port 3000'));
 
-// Keep Node process alive (for Render)
+// Keep alive
 setInterval(() => {}, 1000);
 
-// Global error catcher
+// Global crash handler
 process.on('uncaughtException', (err) => {
   console.error('💥 Uncaught Error:', err);
 });
 
-// 🕹 Random movement and look
+// Movement function
 function startRandomActions(bot) {
-  const movements = ['forward', 'back', 'left', 'right'];
+  const moves = ['forward', 'back', 'left', 'right'];
 
   function randomLook() {
     const yaw = Math.random() * Math.PI * 2;
@@ -27,13 +28,12 @@ function startRandomActions(bot) {
   }
 
   function performActions() {
-    movements.forEach(move => {
-      bot.setControlState(move, Math.random() < 0.7); // 70% chance to walk
+    moves.forEach(move => {
+      bot.setControlState(move, Math.random() < 0.7);
     });
 
-    bot.setControlState('jump', Math.random() < 0.5);  // 50% chance
-    bot.setControlState('sneak', Math.random() < 0.1); // 10% chance
-
+    bot.setControlState('jump', Math.random() < 0.5);
+    bot.setControlState('sneak', Math.random() < 0.1);
     randomLook();
 
     const delay = 3000 + Math.random() * 2000;
@@ -43,11 +43,18 @@ function startRandomActions(bot) {
   performActions();
 }
 
-// 🚀 Create and connect the bot
+// Create bot (with lock)
 function createBot() {
+  if (isConnecting) {
+    console.log('⚠️ Already connecting, skipping...');
+    return;
+  }
+
+  isConnecting = true;
+
   const randomId = Math.floor(Math.random() * 1000);
   const username = `Binod_op_${randomId}`;
-  console.log(`🚀 [${new Date().toISOString()}] Trying to connect as '${username}'...`);
+  console.log(`🚀 Trying to connect as '${username}'`);
 
   try {
     bot = mineflayer.createBot({
@@ -58,13 +65,15 @@ function createBot() {
       auth: 'offline'
     });
   } catch (err) {
-    console.error(`💥 Failed to create bot: ${err.message}`);
+    console.log('❌ Bot creation error:', err.message);
+    isConnecting = false;
     setTimeout(createBot, 10000);
     return;
   }
 
   bot.once('spawn', () => {
-    console.log(`✅ Bot '${username}' joined the server.`);
+    console.log(`✅ Bot '${username}' joined.`);
+    isConnecting = false;
     setTimeout(() => {
       bot.chat('hi!');
       startRandomActions(bot);
@@ -72,37 +81,38 @@ function createBot() {
   });
 
   bot.on('end', () => {
-    console.log(`🔁 Bot '${username}' disconnected. Reconnecting in 10 seconds...`);
+    console.log(`🔁 Bot '${username}' disconnected. Reconnecting...`);
+    isConnecting = false;
     setTimeout(createBot, 10000);
   });
 
   bot.on('kicked', reason => {
-    console.log(`⛔ Bot '${username}' was kicked:`, reason);
+    console.log(`⛔ Kicked: ${reason}`);
   });
 
   bot.on('error', err => {
-    console.log(`❌ Bot '${username}' error:`, err.message);
+    console.log(`❌ Error: ${err.message}`);
   });
 
   bot.on('message', msg => {
-    console.log(`📩 Server: ${msg.toAnsi ? msg.toAnsi() : msg}`);
+    console.log(`📩 ${msg.toAnsi ? msg.toAnsi() : msg}`);
   });
 }
 
-// 🔍 Watchdog: restart if bot is not connected
+// 🔍 Watchdog (safe with isConnecting)
 setInterval(() => {
   if (!bot || !bot.player) {
-    console.log(`🛠 Watchdog: Bot is not connected. Restarting...`);
+    console.log(`🛠 Watchdog: Bot is missing. Forcing restart...`);
     try {
       bot && bot.quit();
     } catch (e) {
-      console.log('⚠️ Error during quit:', e.message);
+      console.log('⚠️ Quit error:', e.message);
     }
-    createBot();
+    createBot(); // isConnecting prevents double spawn
   } else {
     console.log(`✅ Watchdog: Bot '${bot.username}' is alive.`);
   }
 }, 10000);
 
-// 🟢 Start the bot
+// Start once
 createBot();
