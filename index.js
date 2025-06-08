@@ -3,58 +3,50 @@ const express = require('express');
 const app = express();
 
 let bot = null;
-let isConnecting = false; // Prevent double spawn
+let isConnecting = false;
+let botActive = false;
 
-// 🌐 Keep-alive web server
+// Web keep-alive
 app.get('/', (req, res) => res.send('AFK bot is alive!'));
-app.listen(3000, () => console.log('🌐 Web server running on port 3000'));
+app.listen(3000, () => console.log('🌐 Web server on port 3000'));
+setInterval(() => {}, 1000); // Prevent sleep
 
-// Keep alive
-setInterval(() => {}, 1000);
-
-// Global crash handler
-process.on('uncaughtException', (err) => {
-  console.error('💥 Uncaught Error:', err);
+process.on('uncaughtException', err => {
+  console.error('💥 Uncaught Exception:', err);
 });
 
-// Movement function
+// Movement
 function startRandomActions(bot) {
   const moves = ['forward', 'back', 'left', 'right'];
 
-  function randomLook() {
+  function look() {
     const yaw = Math.random() * Math.PI * 2;
     const pitch = (Math.random() - 0.5) * Math.PI / 3;
     bot.look(yaw, pitch, true);
   }
 
-  function performActions() {
-    moves.forEach(move => {
-      bot.setControlState(move, Math.random() < 0.7);
-    });
-
+  function move() {
+    moves.forEach(m => bot.setControlState(m, Math.random() < 0.7));
     bot.setControlState('jump', Math.random() < 0.5);
     bot.setControlState('sneak', Math.random() < 0.1);
-    randomLook();
-
-    const delay = 3000 + Math.random() * 2000;
-    setTimeout(performActions, delay);
+    look();
+    setTimeout(move, 3000 + Math.random() * 2000);
   }
 
-  performActions();
+  move();
 }
 
-// Create bot (with lock)
+// Bot creation with lock
 function createBot() {
-  if (isConnecting) {
-    console.log('⚠️ Already connecting, skipping...');
+  if (isConnecting || botActive) {
+    console.log('⚠️ Skipped bot creation: already active or connecting.');
     return;
   }
 
   isConnecting = true;
-
-  const randomId = Math.floor(Math.random() * 1000);
-  const username = `Binod_op_${randomId}`;
-  console.log(`🚀 Trying to connect as '${username}'`);
+  const id = Math.floor(Math.random() * 1000);
+  const username = `Binod_op_${id}`;
+  console.log(`🚀 Connecting as '${username}'`);
 
   try {
     bot = mineflayer.createBot({
@@ -64,16 +56,17 @@ function createBot() {
       version: '1.12',
       auth: 'offline'
     });
-  } catch (err) {
-    console.log('❌ Bot creation error:', err.message);
+  } catch (e) {
+    console.log('❌ Creation error:', e.message);
     isConnecting = false;
     setTimeout(createBot, 10000);
     return;
   }
 
   bot.once('spawn', () => {
-    console.log(`✅ Bot '${username}' joined.`);
+    console.log(`✅ Joined as '${username}'`);
     isConnecting = false;
+    botActive = true;
     setTimeout(() => {
       bot.chat('hi!');
       startRandomActions(bot);
@@ -81,7 +74,8 @@ function createBot() {
   });
 
   bot.on('end', () => {
-    console.log(`🔁 Bot '${username}' disconnected. Reconnecting...`);
+    console.log(`🔁 Disconnected. Reconnecting...`);
+    botActive = false;
     isConnecting = false;
     setTimeout(createBot, 10000);
   });
@@ -99,20 +93,23 @@ function createBot() {
   });
 }
 
-// 🔍 Watchdog (safe with isConnecting)
+// 🔍 Smarter Watchdog
 setInterval(() => {
-  if (!bot || !bot.player) {
-    console.log(`🛠 Watchdog: Bot is missing. Forcing restart...`);
+  if (!botActive && !isConnecting) {
+    console.log(`🛠 Watchdog: Bot missing. Restarting...`);
     try {
-      bot && bot.quit();
+      if (bot) {
+        bot.quit();
+        bot = null;
+      }
     } catch (e) {
-      console.log('⚠️ Quit error:', e.message);
+      console.log('⚠️ Error during quit:', e.message);
     }
-    createBot(); // isConnecting prevents double spawn
+    createBot();
   } else {
-    console.log(`✅ Watchdog: Bot '${bot.username}' is alive.`);
+    console.log(`✅ Watchdog: Bot is alive or connecting.`);
   }
 }, 10000);
 
-// Start once
+// Start the bot
 createBot();
