@@ -15,9 +15,19 @@ process.on('uncaughtException', err => {
   console.error('💥 Uncaught Exception:', err);
 });
 
-// Movement
+// Human-like actions
 function startRandomActions(bot) {
   const moves = ['forward', 'back', 'left', 'right'];
+  const chatMessages = [
+    "Hello Lodu!",
+    "Nice day in Randi Bazar.",
+    "Anyone here?",
+    "Just chilling 😄",
+    "AFK but alive!",
+    "What's up?",
+    "Server is cool!",
+    "Having fun!"
+  ];
 
   function look() {
     const yaw = Math.random() * Math.PI * 2;
@@ -25,18 +35,39 @@ function startRandomActions(bot) {
     bot.look(yaw, pitch, true);
   }
 
-  function move() {
+  function act() {
+    // 10% chance to send a chat message
+    if (Math.random() < 0.10) {
+      const msg = chatMessages[Math.floor(Math.random() * chatMessages.length)];
+      bot.chat(msg);
+    }
+
+    // 8% chance to swing arm (simulate using an item)
+    if (Math.random() < 0.08) {
+      bot.swingArm();
+    }
+
+    // 6% chance to pause all movement for 5–15 seconds (idle)
+    if (Math.random() < 0.06) {
+      moves.forEach(m => bot.setControlState(m, false));
+      setTimeout(act, 5000 + Math.random() * 10000);
+      return;
+    }
+
+    // Random movement toggles
     moves.forEach(m => bot.setControlState(m, Math.random() < 0.7));
-    bot.setControlState('jump', Math.random() < 0.5);
+    bot.setControlState('jump', Math.random() < 0.2);
     bot.setControlState('sneak', Math.random() < 0.1);
+
     look();
-    setTimeout(move, 3000 + Math.random() * 2000);
+
+    setTimeout(act, 4000 + Math.random() * 3000); // 4–7 seconds per cycle
   }
 
-  move();
+  act();
 }
 
-// Bot creation with lock
+// Bot creation with lock and two-digit username
 function createBot() {
   if (isConnecting || botActive) {
     console.log('⚠️ Skipped bot creation: already active or connecting.');
@@ -44,7 +75,7 @@ function createBot() {
   }
 
   isConnecting = true;
-  const id = Math.floor(Math.random() * 1000);
+  const id = Math.floor(Math.random() * 90) + 10; // Two-digit random number (10-99)
   const username = `Binod_op_${id}`;
   console.log(`🚀 Connecting as '${username}'`);
 
